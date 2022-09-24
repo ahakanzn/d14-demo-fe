@@ -1,47 +1,44 @@
 import "./App.css";
 import "antd/dist/antd.css";
 
-import {
-  Table,
-  Button,
-  InputNumber,
-  Divider,
-  Select,
-  Form,
-  Input,
-  Space,
-} from "antd";
+import { Table, Button, InputNumber, Divider, Select, Form, Input, Space } from "antd";
 import axios from "axios";
 import React, { useEffect, useState } from "react";
 
 function App() {
   const [childCount, setChildCount] = useState();
   const [isCitizen, setIsCitizen] = useState();
-  const [hasLicense, setHasLicense] = useState();
+  const [hasDrivingLicense, setHasLicense] = useState();
   const [dataSource, setDataSource] = useState([]);
   const [name, setName] = useState();
   const [citizenId, setCitizenId] = useState();
   const { Option } = Select;
 
   useEffect(() => {
-    fetchData();
+    getCitizenById();
+    searchCitizen();
   }, []);
 
   const columns = [
     {
-      title: "Email",
-      dataIndex: "email",
-      key: "email",
+      title: "Id",
+      dataIndex: "id",
+      key: "id",
     },
     {
-      title: "Gender",
-      dataIndex: "gender",
-      key: "gender",
+      title: "Name",
+      dataIndex: "name",
+      key: "name",
     },
     {
-      title: "Nat",
-      dataIndex: "nat",
-      key: "nat",
+      title: "Has Driving License",
+      dataIndex: "hasDrivingLicense",
+      key: "hasDrivingLicense",
+    },
+    {
+      title: "Is Citizen",
+      dataIndex: "isCitizen",
+      key: "isCitizen",
     },
   ];
 
@@ -66,65 +63,71 @@ function App() {
     setCitizenId(e);
   };
 
-  const fetchData = () => {
-    return axios.get("https://randomuser.me/api/").then((response) => {
-      let mappedResponse = response.data.results.map((item) => {
-        return {
-          key: item.key,
-          email: item.email,
-          gender: item.gender,
-          nat: item.nat,
-        };
-      });
+  const addCitizen = () => {
+    axios
+      .post("http://localhost:8080/citizen/add", { name: name, hasDrivingLicense: hasDrivingLicense === "yes" ? 1 : 0, isCitizen: isCitizen === "yes" ? 1 : 0 })
+      .then((response) => console.log(response));
+  };
+
+  const updateCitizen = () => {
+    axios
+      .post("http://localhost:8080/citizen/update", {
+        id: citizenId,
+        name: name,
+        hasDrivingLicense: hasDrivingLicense === "yes" ? 1 : 0,
+        isCitizen: isCitizen === "yes" ? 1 : 0,
+      })
+      .then((response) => console.log(response));
+  };
+
+  const getCitizenById = () => {
+    const id = citizenId;
+    console.log("id:" + id);
+    axios.get(`http://localhost:8080/citizen/${id}`).then((response) => {
+      console.log(response);
+      let mappedResponse = [
+        {
+          id: response.data.id,
+          name: response.data.name,
+          isCitizen: response.data.isCitizen,
+          hasDrivingLicense: response.data.hasDrivingLicense,
+        },
+      ];
+      console.log(mappedResponse);
       setDataSource(mappedResponse);
     });
   };
 
-  const addCitizenRequest = {
-    name: name,
-    hasLicense: hasLicense === "yes" ? 1 : 0,
-    isCitizen: isCitizen === "yes" ? 1 : 0,
-  };
-  const addCitizen = () => {
+  const searchCitizen = () => {
+    const childCountR = childCount;
+    const isCitizenR = isCitizen;
+    const nameR = name;
+    const hasDrivingLicenseR = hasDrivingLicense;
     axios
-      .post("https://localhost:8080/citizen/add", addCitizenRequest)
-      .then(response => console.log(response));
-  };
-
-  const updateCitizenRequest = {
-    id: citizenId,
-    name: name,
-    hasLicense: hasLicense === "yes" ? 1 : 0,
-    isCitizen: isCitizen === "yes" ? 1 : 0,
-  };
-  const updateCitizen = () => {
-    axios.post("https://localhost:8080/citizen/add",updateCitizenRequest)
-    .then(response => console.log(response));
-  };
-
-  const getById = () => {
-    axios
-      .get("https://localhost:8080/citizen/?{citizenId}")
+      .post("http://localhost:8080/citizen/getWithFilter", {
+        numberOfChildren: childCountR,
+        isCitizen: isCitizenR,
+        name: nameR,
+        hasDrivingLicense: hasDrivingLicenseR,
+      })
       .then((response) => {
-        let mappedResponse = response.map((item) => {
-          return {
-            key: item.key,
-            email: item.email,
-            gender: item.gender,
-            nat: item.nat,
-          };
-        });
+        console.log(response);
+        let mappedResponse = [
+          {
+            number: response.data.id,
+            name: response.data.name,
+            isCitizen: response.data.isCitizen,
+            hasDrivingLicense: response.data.hasDrivingLicense,
+          },
+        ];
+        console.log(mappedResponse);
         setDataSource(mappedResponse);
       });
   };
 
   return (
     <div className="App">
-      <Form
-        labelCol={{ span: 24 }}
-        wrapperCol={{ span: 12 }}
-        layout="horizontal"
-      >
+      <Form labelCol={{ span: 24 }} wrapperCol={{ span: 12 }} layout="horizontal">
         <Divider plain>Search Citizen</Divider>
         <Space>
           <Form.Item wrapperCol={{ span: 2 }} label={"Number Of Children"}>
@@ -147,7 +150,7 @@ function App() {
           </Form.Item>
         </Space>
         <Space>
-          <Button type="primary" onClick={fetchData}>
+          <Button type="primary" onClick={searchCitizen}>
             Search Citizen
           </Button>
         </Space>
@@ -155,66 +158,38 @@ function App() {
         <Table columns={columns} dataSource={dataSource} />
         <Divider plain>Get Citizen By Id</Divider>
         <Space>
-          <InputNumber
-            min={0}
-            onChange={onCitizenIDChange}
-            placeholder={"Citizen ID"}
-          />
-          <Button type="primary" onClick={getById}>
+          <InputNumber min={0} onChange={onCitizenIDChange} placeholder={"Citizen ID"} />
+          <Button type="primary" onClick={getCitizenById}>
             Get Citizen By Id
           </Button>
         </Space>
         <Divider plain>Add/Update Citizen</Divider>
         <Space>
           <Form.Item>
-            <InputNumber
-              min={0}
-              onChange={onCitizenIDChange}
-              placeholder={"Citizen ID"}
-            />
+            <InputNumber min={0} onChange={onCitizenIDChange} placeholder={"Citizen ID"} />
           </Form.Item>
           <Form.Item>
-            <Select
-              style={{ width: 90 }}
-              onChange={handleCitizenChange}
-              placeholder="Is Citizen"
-            >
+            <Select style={{ width: 90 }} onChange={handleCitizenChange} placeholder="Is Citizen">
               <Option value="yes">Yes</Option>
               <Option value="no">No</Option>
             </Select>
           </Form.Item>
           <Form.Item>
-            <Input
-              onChange={onNameChange}
-              style={{ width: 90 }}
-              placeholder="Name"
-            />
+            <Input onChange={onNameChange} style={{ width: 90 }} placeholder="Name" />
           </Form.Item>
           <Form.Item>
-            <Select
-              style={{ width: 90 }}
-              onChange={handleLicenseChange}
-              placeholder="Has Driving License"
-            >
+            <Select style={{ width: 90 }} onChange={handleLicenseChange} placeholder="Has Driving License">
               <Option value="yes">Yes</Option>
               <Option value="no">No</Option>
             </Select>
           </Form.Item>
           <Form.Item>
-            <Button
-              type="primary"
-              onClick={addCitizen}
-              disabled={citizenId != null}
-            >
+            <Button type="primary" onClick={addCitizen} disabled={citizenId != null}>
               Add Citizen
             </Button>
           </Form.Item>
           <Form.Item>
-            <Button
-              type="primary"
-              onClick={updateCitizen}
-              disabled={citizenId == null}
-            >
+            <Button type="primary" onClick={updateCitizen} disabled={citizenId == null}>
               Update Citizen
             </Button>
           </Form.Item>
